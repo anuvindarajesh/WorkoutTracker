@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+    <title>Fitness Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        * {
+            box-sizing: inherit;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .screen {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .hidden {
+            display: none;
+        }
+        /* Styles for the calendar */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        .calendar-day {
+            text-align: center;
+            padding: 10px;
+            border-radius: 50%;
+        }
+        .calendar-day.header {
+            font-weight: bold;
+            color: #9ca3af; /* gray-400 */
+        }
+        .calendar-day.other-month {
+            color: #4b5563; /* gray-600 */
+        }
+        .calendar-day.highlight {
+            background-color: #434f63; /* blue-500 */
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        /* Style for the date input to show the calendar icon */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1) brightness(0.7);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-[#1c1c1e]">
+
+<div id="app-container" class="w-full min-h-screen bg-[#1c1c1e] text-white px-4">
+
+    <!-- Home Screen -->
+    <div id="home-screen" class="screen p-5 flex flex-col min-h-screen">
+        <h1 class="text-4xl font-bold text-center my-8">Workout Tracker</h1>
+        <div id="muscle-grid" class="grid grid-cols-2 gap-4 flex-grow">
+            <!-- Muscle groups will be injected here by JS -->
+        </div>
+    </div>
+
+    <!-- Workout Screen -->
+    <div id="workout-screen" class="screen hidden p-5 flex flex-col min-h-screen">
+        <button id="back-to-home-from-workout" class="absolute top-5 left-5 flex items-center gap-2 text-blue-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+            <span>Back</span>
+        </button>
+        <div class="flex justify-between items-center">
+            <h1 id="workout-title" class="text-4xl font-bold text-center my-8 flex-1">Log Workout</h1>
+            <button id="calendar-icon-button" class="text-3xl p-2">🗓️</button>
+        </div>
+
+        <div class="space-y-4">
+            <input id="exercise-name-input" type="text" placeholder="Exercise Name (e.g., Bench Press)" class="w-full bg-[#2c2c2e] border border-[#3a3a3c] rounded-xl p-4 text-white placeholder-gray-500 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input id="weight-input" type="text" placeholder="Weight (e.g., 80kg or 175lbs)" class="w-full bg-[#2c2c2e] border border-[#3a3a3c] rounded-xl p-4 text-white placeholder-gray-500 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input id="date-input" type="date" class="w-full bg-[#2c2c2e] border border-[#3a3a3c] rounded-xl p-4 text-white placeholder-gray-500 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button id="save-workout-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-full text-lg mt-8 shadow-lg">
+            Save Workout
+        </button>
+    </div>
+
+    <!-- Calendar Modal -->
+    <div id="calendar-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#2c2c2e] rounded-2xl p-6 max-w-lg w-full">
+            <div class="flex justify-between items-center mb-4">
+                <button id="prev-month" class="text-2xl font-bold">‹</button>
+                <h2 id="calendar-header" class="text-xl font-bold"></h2>
+                <button id="next-month" class="text-2xl font-bold">›</button>
+            </div>
+            <div id="calendar-grid" class="calendar-grid"></div>
+            <button id="close-calendar-button" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-full mt-6 w-full">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <!-- Workouts for Date Modal -->
+    <div id="date-workouts-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#2c2c2e] rounded-2xl p-6 max-w-lg w-full max-h-[80vh] flex flex-col">
+            <h2 id="date-workouts-title" class="text-2xl font-bold mb-4">Workouts</h2>
+            <div id="date-workouts-content" class="text-gray-300 overflow-y-auto flex-grow space-y-3">
+                <!-- Workouts for selected date will be injected here -->
+            </div>
+            <button id="close-date-workouts-button" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-full mt-6 self-center">
+                Close
+            </button>
+        </div>
+    </div>
+
+
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- STATE MANAGEMENT ---
+        let state = {
+            currentScreen: 'home', // 'home', 'workout'
+            selectedMuscle: null,
+            workouts: [
+                { id: '1', muscle: 'Chest', exercise: 'Bench Press', weight: '80kg', date: '2025-07-01' },
+                { id: '2', muscle: 'Back', exercise: 'Deadlift', weight: '120kg', date: '2025-06-28' },
+                { id: '3', muscle: 'Legs', exercise: 'Squat', weight: '100kg', date: '2025-06-27' },
+                { id: '4', muscle: 'Chest', exercise: 'Incline Dumbbell Press', weight: '30kg', date: '2025-07-01' },
+                { id: '5', muscle: 'Chest', exercise: 'Bench Press', weight: '75kg', date: '2025-06-24' },
+            ],
+            calendarDate: new Date(),
+        };
+
+        const muscleGroups = [
+            { name: 'Chest', icon: '💪' },
+            { name: 'Triceps', icon: '⚡' },
+            { name: 'Back', icon: '🏋️‍♂️' },
+            { name: 'Biceps', icon: '💪' },
+            { name: 'Legs', icon: '🦵' },
+            { name: 'Shoulders', icon: '🏆' },
+        ];
+
+        // --- DOM ELEMENTS ---
+        const screens = {
+            home: document.getElementById('home-screen'),
+            workout: document.getElementById('workout-screen'),
+        };
+        const muscleGrid = document.getElementById('muscle-grid');
+        const calendarModal = document.getElementById('calendar-modal');
+        const dateWorkoutsModal = document.getElementById('date-workouts-modal');
+
+        // --- RENDER FUNCTIONS ---
+
+        function renderScreen() {
+            Object.values(screens).forEach(screen => screen.classList.add('hidden'));
+            if (screens[state.currentScreen]) {
+                screens[state.currentScreen].classList.remove('hidden');
+            }
+        }
+
+        function renderMuscleGrid() {
+            muscleGrid.innerHTML = '';
+            muscleGroups.forEach(group => {
+                const button = document.createElement('button');
+                button.className = 'bg-[#2c2c2e] rounded-2xl flex flex-col justify-center items-center p-4 aspect-square shadow-lg hover:bg-[#3a3a3c] transition-colors';
+                button.innerHTML = `<span class="text-4xl">${group.icon}</span><span class="text-xl font-semibold mt-2">${group.name}</span>`;
+                button.addEventListener('click', () => {
+                    state.selectedMuscle = group.name;
+                    state.currentScreen = 'workout';
+                    render();
+                });
+                muscleGrid.appendChild(button);
+            });
+        }
+
+        function renderWorkoutScreen() {
+            document.getElementById('workout-title').textContent = `Log ${state.selectedMuscle}`;
+            // Set default date to today
+            document.getElementById('date-input').value = new Date().toISOString().split('T')[0];
+            document.getElementById('exercise-name-input').value = '';
+            document.getElementById('weight-input').value = '';
+        }
+
+        function renderCalendar() {
+            const year = state.calendarDate.getFullYear();
+            const month = state.calendarDate.getMonth();
+            const muscle = state.selectedMuscle;
+
+            document.getElementById('calendar-header').textContent = `${state.calendarDate.toLocaleString('default', { month: 'long' })} ${year}`;
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            // Get workout dates for the current muscle
+            const workoutDates = new Set(state.workouts
+                .filter(w => w.muscle === muscle)
+                .map(w => w.date));
+
+            // Calendar headers
+            ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day header';
+                dayEl.textContent = day;
+                grid.appendChild(dayEl);
+            });
+
+            const firstDayOfMonth = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            for (let i = 0; i < firstDayOfMonth; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day';
+                dayEl.textContent = day;
+
+                const currentDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                if (workoutDates.has(currentDateStr)) {
+                    dayEl.classList.add('highlight');
+                    dayEl.onclick = () => showWorkoutsForDate(currentDateStr);
+                }
+                grid.appendChild(dayEl);
+            }
+        }
+
+        function showWorkoutsForDate(dateStr) {
+            const workouts = state.workouts.filter(w => w.muscle === state.selectedMuscle && w.date === dateStr);
+            const contentEl = document.getElementById('date-workouts-content');
+            contentEl.innerHTML = '';
+
+            if (workouts.length === 0) {
+                // If all workouts for this day were deleted, close the modal and refresh calendar
+                dateWorkoutsModal.classList.add('hidden');
+                renderCalendar();
+                return;
+            }
+
+            document.getElementById('date-workouts-title').textContent = `Workouts for ${new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US')}`;
+
+            workouts.forEach(workout => {
+                const item = document.createElement('div');
+                item.className = 'bg-[#3a3a3c] p-3 rounded-lg flex justify-between items-center';
+
+                const text = document.createElement('span');
+                text.textContent = `${workout.exercise} - ${workout.weight}`;
+                item.appendChild(text);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'text-red-500 hover:text-red-400 text-xl font-bold px-2';
+                deleteBtn.textContent = '🗑️';
+                deleteBtn.onclick = () => deleteWorkout(workout.id, dateStr);
+                item.appendChild(deleteBtn);
+
+                contentEl.appendChild(item);
+            });
+
+            calendarModal.classList.add('hidden');
+            dateWorkoutsModal.classList.remove('hidden');
+        }
+
+        function deleteWorkout(workoutId, dateStr) {
+            state.workouts = state.workouts.filter(w => w.id !== workoutId);
+            // Refresh the modal to show the updated list for the day
+            showWorkoutsForDate(dateStr);
+        }
+
+        function render() {
+            renderScreen();
+            if (state.currentScreen === 'home') renderMuscleGrid();
+            else if (state.currentScreen === 'workout') renderWorkoutScreen();
+        }
+
+        // --- EVENT LISTENERS ---
+
+        // Navigation
+        document.getElementById('back-to-home-from-workout').addEventListener('click', () => { state.currentScreen = 'home'; render(); });
+
+        // Save workout
+        document.getElementById('save-workout-button').addEventListener('click', () => {
+            const exerciseName = document.getElementById('exercise-name-input').value.trim();
+            const weight = document.getElementById('weight-input').value.trim();
+            const date = document.getElementById('date-input').value;
+
+            if (!exerciseName || !weight || !date) {
+                alert('Please fill in all fields, including the date.');
+                return;
+            }
+            state.workouts.unshift({ id: Date.now().toString(), muscle: state.selectedMuscle, exercise: exerciseName, weight: weight, date: date });
+            // Clear inputs after saving
+            renderWorkoutScreen();
+            alert('Workout saved!');
+        });
+
+        // Calendar listeners
+        document.getElementById('calendar-icon-button').addEventListener('click', () => {
+            state.calendarDate = new Date();
+            renderCalendar();
+            calendarModal.classList.remove('hidden');
+        });
+        document.getElementById('close-calendar-button').addEventListener('click', () => calendarModal.classList.add('hidden'));
+        document.getElementById('prev-month').addEventListener('click', () => {
+            state.calendarDate.setMonth(state.calendarDate.getMonth() - 1);
+            renderCalendar();
+        });
+        document.getElementById('next-month').addEventListener('click', () => {
+            state.calendarDate.setMonth(state.calendarDate.getMonth() + 1);
+            renderCalendar();
+        });
+
+        // Workouts for date modal listener
+        document.getElementById('close-date-workouts-button').addEventListener('click', () => {
+             dateWorkoutsModal.classList.add('hidden');
+             calendarModal.classList.remove('hidden'); // Go back to the calendar
+        });
+
+
+        // --- INITIAL RENDER ---
+        render();
+    });
+</script>
+</body>
+</html>
