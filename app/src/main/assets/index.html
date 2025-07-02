@@ -2,22 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fitness Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            box-sizing: border-box;
-        }
-
-        * {
-            box-sizing: inherit;
-        }
         body {
             font-family: 'Inter', sans-serif;
         }
@@ -60,11 +49,14 @@
 </head>
 <body class="bg-[#1c1c1e]">
 
-<div id="app-container" class="w-full min-h-screen bg-[#1c1c1e] text-white px-4">
+<div id="app-container" class="max-w-md mx-auto min-h-screen bg-[#1c1c1e] text-white">
 
     <!-- Home Screen -->
     <div id="home-screen" class="screen p-5 flex flex-col min-h-screen">
-        <h1 class="text-4xl font-bold text-center my-8">Workout Tracker</h1>
+        <div class="flex justify-between items-center my-8">
+            <h1 class="text-4xl font-bold text-center flex-1">Workout Tracker</h1>
+            <button id="edit-groups-button" class="text-blue-400 font-semibold px-4 py-2 rounded-lg">Edit</button>
+        </div>
         <div id="muscle-grid" class="grid grid-cols-2 gap-4 flex-grow">
             <!-- Muscle groups will be injected here by JS -->
         </div>
@@ -119,7 +111,34 @@
         </div>
     </div>
 
+    <!-- Add/Edit Muscle Group Modal -->
+    <div id="add-group-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#2c2c2e] rounded-2xl p-6 max-w-lg w-full">
+            <h2 class="text-2xl font-bold mb-4">Add Muscle Group</h2>
+            <div class="space-y-4">
+                <input id="new-group-name" type="text" placeholder="Muscle Group Name" class="w-full bg-[#3a3a3c] border border-[#4a4a4c] rounded-xl p-4 text-white placeholder-gray-500 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="grid grid-cols-3 gap-4">
+                    <input id="new-group-emoji" type="text" placeholder="Emoji" class="col-span-2 bg-[#3a3a3c] border border-[#4a4a4c] rounded-xl p-4 text-white placeholder-gray-500 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button id="random-emoji-button" class="bg-gray-600 hover:bg-purple-600 text-white font-bold rounded-xl text-2xl">🎲</button>
+                </div>
+            </div>
+            <div class="flex gap-4 mt-6">
+                <button id="cancel-add-group-button" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-full flex-1">Cancel</button>
+                <button id="save-group-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-full flex-1">Save</button>
+            </div>
+        </div>
+    </div>
 
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-[#2c2c2e] rounded-2xl p-6 max-w-lg w-full text-center">
+            <p id="confirm-modal-text" class="text-lg mb-6"></p>
+            <div class="flex gap-4">
+                <button id="confirm-cancel-button" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-full flex-1">Cancel</button>
+                <button id="confirm-ok-button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-full flex-1">OK</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -127,7 +146,16 @@
         // --- STATE MANAGEMENT ---
         let state = {
             currentScreen: 'home', // 'home', 'workout'
+            isEditMode: false,
             selectedMuscle: null,
+            muscleGroups: [
+                { name: 'Chest', icon: '🫀' },
+                { name: 'Triceps', icon: '🥊' },
+                { name: 'Back', icon: '🏋️‍♂️' },
+                { name: 'Biceps', icon: '💪' },
+                { name: 'Legs', icon: '🦵' },
+                { name: 'Shoulders', icon: '💀' },
+            ],
             workouts: [
                 { id: '1', muscle: 'Chest', exercise: 'Bench Press', weight: '80kg', date: '2025-07-01' },
                 { id: '2', muscle: 'Back', exercise: 'Deadlift', weight: '120kg', date: '2025-06-28' },
@@ -138,23 +166,16 @@
             calendarDate: new Date(),
         };
 
-        const muscleGroups = [
-            { name: 'Chest', icon: '💪' },
-            { name: 'Triceps', icon: '⚡' },
-            { name: 'Back', icon: '🏋️‍♂️' },
-            { name: 'Biceps', icon: '💪' },
-            { name: 'Legs', icon: '🦵' },
-            { name: 'Shoulders', icon: '🏆' },
-        ];
+        const defaultEmojis = ['💥','🔥','🚀','😈','🤸','🏃','🧘🏻‍♀️️','🤺️','😎️','⚡️','👊🏻','🏆'];
+        let confirmCallback = null;
 
         // --- DOM ELEMENTS ---
-        const screens = {
-            home: document.getElementById('home-screen'),
-            workout: document.getElementById('workout-screen'),
-        };
+        const screens = { home: document.getElementById('home-screen'), workout: document.getElementById('workout-screen') };
         const muscleGrid = document.getElementById('muscle-grid');
         const calendarModal = document.getElementById('calendar-modal');
         const dateWorkoutsModal = document.getElementById('date-workouts-modal');
+        const addGroupModal = document.getElementById('add-group-modal');
+        const confirmModal = document.getElementById('confirm-modal');
 
         // --- RENDER FUNCTIONS ---
 
@@ -167,23 +188,58 @@
 
         function renderMuscleGrid() {
             muscleGrid.innerHTML = '';
-            muscleGroups.forEach(group => {
+            state.muscleGroups.forEach(group => {
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'relative';
+
                 const button = document.createElement('button');
-                button.className = 'bg-[#2c2c2e] rounded-2xl flex flex-col justify-center items-center p-4 aspect-square shadow-lg hover:bg-[#3a3a3c] transition-colors';
+                button.className = 'bg-[#2c2c2e] rounded-2xl flex flex-col justify-center items-center p-4 aspect-square shadow-lg hover:bg-[#3a3a3c] transition-colors w-full h-full';
                 button.innerHTML = `<span class="text-4xl">${group.icon}</span><span class="text-xl font-semibold mt-2">${group.name}</span>`;
-                button.addEventListener('click', () => {
-                    state.selectedMuscle = group.name;
-                    state.currentScreen = 'workout';
-                    render();
-                });
-                muscleGrid.appendChild(button);
+
+                if (!state.isEditMode) {
+                    button.onclick = () => {
+                        state.selectedMuscle = group.name;
+                        state.currentScreen = 'workout';
+                        render();
+                    };
+                }
+
+                buttonContainer.appendChild(button);
+
+                if(state.isEditMode) {
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-lg';
+                    deleteButton.textContent = '−';
+                    deleteButton.onclick = () => {
+                        showConfirm("All gains will be sent to the Shadow Realm!! Proceed?🫠🤌🏻", () => {
+                            deleteMuscleGroup(group.name);
+                        });
+                    };
+                    buttonContainer.appendChild(deleteButton);
+                }
+                muscleGrid.appendChild(buttonContainer);
             });
+
+            if (state.isEditMode) {
+                const addButton = document.createElement('button');
+                addButton.className = 'border-2 border-dashed border-gray-600 text-gray-500 rounded-2xl flex flex-col justify-center items-center p-4 aspect-square shadow-lg hover:bg-[#2c2c2e] transition-colors';
+                addButton.innerHTML = `<span class="text-5xl font-light">+</span><span class="text-xl font-semibold mt-2">Add Group</span>`;
+                addButton.onclick = () => {
+                    document.getElementById('new-group-name').value = '';
+                    document.getElementById('new-group-emoji').value = '';
+                    addGroupModal.classList.remove('hidden');
+                };
+                muscleGrid.appendChild(addButton);
+            }
         }
 
         function renderWorkoutScreen() {
             document.getElementById('workout-title').textContent = `Log ${state.selectedMuscle}`;
-            // Set default date to today
-            document.getElementById('date-input').value = new Date().toISOString().split('T')[0];
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('date-input').value = `${yyyy}-${mm}-${dd}`;
             document.getElementById('exercise-name-input').value = '';
             document.getElementById('weight-input').value = '';
         }
@@ -197,12 +253,7 @@
             const grid = document.getElementById('calendar-grid');
             grid.innerHTML = '';
 
-            // Get workout dates for the current muscle
-            const workoutDates = new Set(state.workouts
-                .filter(w => w.muscle === muscle)
-                .map(w => w.date));
-
-            // Calendar headers
+            const workoutDates = new Set(state.workouts.filter(w => w.muscle === muscle).map(w => w.date));
             ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
                 const dayEl = document.createElement('div');
                 dayEl.className = 'calendar-day header';
@@ -212,16 +263,11 @@
 
             const firstDayOfMonth = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-            for (let i = 0; i < firstDayOfMonth; i++) {
-                grid.appendChild(document.createElement('div'));
-            }
-
+            for (let i = 0; i < firstDayOfMonth; i++) grid.appendChild(document.createElement('div'));
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayEl = document.createElement('div');
                 dayEl.className = 'calendar-day';
                 dayEl.textContent = day;
-
                 const currentDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 if (workoutDates.has(currentDateStr)) {
                     dayEl.classList.add('highlight');
@@ -237,7 +283,6 @@
             contentEl.innerHTML = '';
 
             if (workouts.length === 0) {
-                // If all workouts for this day were deleted, close the modal and refresh calendar
                 dateWorkoutsModal.classList.add('hidden');
                 renderCalendar();
                 return;
@@ -246,8 +291,6 @@
             const dateObj = new Date(dateStr + 'T00:00:00');
             const formattedDate = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
             document.getElementById('date-workouts-title').textContent = `Workouts for ${formattedDate}`;
-
-            // Show each workout on a new line with a delete button
             workouts.forEach(workout => {
                 const item = document.createElement('div');
                 item.className = 'text-white text-lg flex justify-between items-center';
@@ -264,15 +307,25 @@
                 item.appendChild(deleteBtn);
                 contentEl.appendChild(item);
             });
-
             calendarModal.classList.add('hidden');
             dateWorkoutsModal.classList.remove('hidden');
         }
 
         function deleteWorkout(workoutId, dateStr) {
             state.workouts = state.workouts.filter(w => w.id !== workoutId);
-            // Refresh the modal to show the updated list for the day
             showWorkoutsForDate(dateStr);
+        }
+
+        function deleteMuscleGroup(groupName) {
+            state.muscleGroups = state.muscleGroups.filter(g => g.name !== groupName);
+            state.workouts = state.workouts.filter(w => w.muscle !== groupName);
+            renderMuscleGrid();
+        }
+
+        function showConfirm(message, callback) {
+            document.getElementById('confirm-modal-text').innerHTML = `<strong>${message}</strong>`;
+            confirmCallback = callback;
+            confirmModal.classList.remove('hidden');
         }
 
         function render() {
@@ -282,57 +335,77 @@
         }
 
         // --- EVENT LISTENERS ---
-
-        // Navigation
         document.getElementById('back-to-home-from-workout').addEventListener('click', () => { state.currentScreen = 'home'; render(); });
-
-        // Save workout
         document.getElementById('save-workout-button').addEventListener('click', () => {
             const exerciseName = document.getElementById('exercise-name-input').value.trim();
             let weight = document.getElementById('weight-input').value.trim();
-            const date = document.getElementById('date-input').value;
             if (!weight) {
                 weight = "0kg";
             } else {
                 weight = `${weight}kg`;
             }
-            if (!exerciseName || !date) {
-                alert('Please fill in all fields, including the date.');
-                return;
-            }
+            const date = document.getElementById('date-input').value;
+            if (!exerciseName || !date) { alert('Please fill in all fields.'); return; }
             state.workouts.unshift({ id: Date.now().toString(), muscle: state.selectedMuscle, exercise: exerciseName, weight: weight, date: date });
-            // Clear inputs after saving
             renderWorkoutScreen();
             alert('Workout saved!');
         });
-
-        // Calendar listeners
         document.getElementById('calendar-icon-button').addEventListener('click', () => {
             state.calendarDate = new Date();
             renderCalendar();
             calendarModal.classList.remove('hidden');
         });
         document.getElementById('close-calendar-button').addEventListener('click', () => calendarModal.classList.add('hidden'));
-        document.getElementById('prev-month').addEventListener('click', () => {
-            state.calendarDate.setMonth(state.calendarDate.getMonth() - 1);
-            renderCalendar();
-        });
-        document.getElementById('next-month').addEventListener('click', () => {
-            state.calendarDate.setMonth(state.calendarDate.getMonth() + 1);
-            renderCalendar();
-        });
-
-        // Workouts for date modal listener
+        document.getElementById('prev-month').addEventListener('click', () => { state.calendarDate.setMonth(state.calendarDate.getMonth() - 1); renderCalendar(); });
+        document.getElementById('next-month').addEventListener('click', () => { state.calendarDate.setMonth(state.calendarDate.getMonth() + 1); renderCalendar(); });
         document.getElementById('close-date-workouts-button').addEventListener('click', () => {
              dateWorkoutsModal.classList.add('hidden');
-             calendarModal.classList.remove('hidden'); // Go back to the calendar
+             calendarModal.classList.remove('hidden');
+        });
+        document.getElementById('date-workouts-content').addEventListener('click', e => {
+            if (e.target.tagName === 'BUTTON') {
+                deleteWorkout(e.target.dataset.id, e.target.dataset.date);
+            }
         });
 
+        // Edit Mode Listeners
+        document.getElementById('edit-groups-button').addEventListener('click', e => {
+            state.isEditMode = !state.isEditMode;
+            e.target.textContent = state.isEditMode ? 'Done' : 'Edit';
+            renderMuscleGrid();
+        });
+
+        // Add Group Modal Listeners
+        document.getElementById('cancel-add-group-button').addEventListener('click', () => addGroupModal.classList.add('hidden'));
+        document.getElementById('random-emoji-button').addEventListener('click', () => {
+            document.getElementById('new-group-emoji').value = defaultEmojis[Math.floor(Math.random() * defaultEmojis.length)];
+        });
+        document.getElementById('save-group-button').addEventListener('click', () => {
+            const name = document.getElementById('new-group-name').value.trim();
+            let emoji = document.getElementById('new-group-emoji').value.trim();
+            if (!name) { alert('Please enter a name for the muscle group.'); return; }
+            if (state.muscleGroups.some(g => g.name.toLowerCase() === name.toLowerCase())) { alert('A muscle group with this name already exists.'); return; }
+            if (!emoji) emoji = defaultEmojis[Math.floor(Math.random() * defaultEmojis.length)];
+            state.muscleGroups.push({ name, icon: emoji });
+            renderMuscleGrid();
+            addGroupModal.classList.add('hidden');
+        });
+
+        // Confirm Modal Listeners
+        document.getElementById('confirm-cancel-button').addEventListener('click', () => {
+            confirmModal.classList.add('hidden');
+            confirmCallback = null;
+        });
+        document.getElementById('confirm-ok-button').addEventListener('click', () => {
+            if(confirmCallback) confirmCallback();
+            confirmModal.classList.add('hidden');
+            confirmCallback = null;
+        });
 
         // --- INITIAL RENDER ---
         render();
 
-        // --- SWIPE GESTURE FOR CALENDAR MODAL ---
+        // Swipe support for calendar modal
         let touchStartX = 0;
         let touchEndX = 0;
 
@@ -349,39 +422,28 @@
             const swipeDistance = touchEndX - touchStartX;
             if (Math.abs(swipeDistance) > 50) {
                 if (swipeDistance > 0) {
-                    // Swipe Right: Previous Month
                     state.calendarDate.setMonth(state.calendarDate.getMonth() - 1);
                 } else {
-                    // Swipe Left: Next Month
                     state.calendarDate.setMonth(state.calendarDate.getMonth() + 1);
                 }
                 renderCalendar();
             }
         }
 
-        // Handle Android back button to navigate between screens
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Backspace' || event.key === 'Escape') {
-                if (state.currentScreen === 'workout') {
-                    state.currentScreen = 'home';
-                    render();
-                    event.preventDefault(); // prevent default back behavior
-                } else if (!calendarModal.classList.contains('hidden')) {
-                    calendarModal.classList.add('hidden');
-                    event.preventDefault();
-                } else if (!dateWorkoutsModal.classList.contains('hidden')) {
-                    dateWorkoutsModal.classList.add('hidden');
-                    calendarModal.classList.remove('hidden');
-                    event.preventDefault();
-                }
-            }
-        });
-
-        // Android sends a 'CustomEvent' named 'androidBackButton'
+        // Android back button support
         window.addEventListener('androidBackButton', () => {
+            if (!addGroupModal.classList.contains('hidden')) {
+                addGroupModal.classList.add('hidden');
+                return;
+            }
+            if (state.isEditMode) {
+                state.isEditMode = false;
+                document.getElementById('edit-groups-button').textContent = 'Edit';
+                renderMuscleGrid();
+                return;
+            }
             if (!dateWorkoutsModal.classList.contains('hidden')) {
                 dateWorkoutsModal.classList.add('hidden');
-                calendarModal.classList.remove('hidden');
                 return;
             }
             if (!calendarModal.classList.contains('hidden')) {
@@ -391,11 +453,10 @@
             if (state.currentScreen === 'workout') {
                 state.currentScreen = 'home';
                 render();
-            } else {
-                // Optional: Ask Android to close the app
-                if (window.AndroidApp) {
-                    window.AndroidApp.closeApp();
-                }
+                return;
+            }
+            if (window.AndroidApp) {
+                window.AndroidApp.closeApp();
             }
         });
     });
