@@ -165,6 +165,15 @@
             ],
             calendarDate: new Date(),
         };
+        // Load saved workouts and muscle groups from localStorage
+        const savedWorkouts = localStorage.getItem('workouts');
+        const savedMuscles = localStorage.getItem('muscleGroups');
+        if (savedWorkouts) {
+            state.workouts = JSON.parse(savedWorkouts);
+        }
+        if (savedMuscles) {
+            state.muscleGroups = JSON.parse(savedMuscles);
+        }
 
         const defaultEmojis = ['💥','🔥','🚀','😈','🤸','🏃','🧘🏻‍♀️️','🤺️','😎️','⚡️','👊🏻','🏆'];
         let confirmCallback = null;
@@ -313,12 +322,15 @@
 
         function deleteWorkout(workoutId, dateStr) {
             state.workouts = state.workouts.filter(w => w.id !== workoutId);
+            localStorage.setItem('workouts', JSON.stringify(state.workouts));
             showWorkoutsForDate(dateStr);
         }
 
         function deleteMuscleGroup(groupName) {
             state.muscleGroups = state.muscleGroups.filter(g => g.name !== groupName);
             state.workouts = state.workouts.filter(w => w.muscle !== groupName);
+            localStorage.setItem('muscleGroups', JSON.stringify(state.muscleGroups));
+            localStorage.setItem('workouts', JSON.stringify(state.workouts));
             renderMuscleGrid();
         }
 
@@ -347,6 +359,7 @@
             const date = document.getElementById('date-input').value;
             if (!exerciseName || !date) { alert('Please fill in all fields.'); return; }
             state.workouts.unshift({ id: Date.now().toString(), muscle: state.selectedMuscle, exercise: exerciseName, weight: weight, date: date });
+            localStorage.setItem('workouts', JSON.stringify(state.workouts));
             renderWorkoutScreen();
             alert('Workout saved!');
         });
@@ -387,6 +400,7 @@
             if (state.muscleGroups.some(g => g.name.toLowerCase() === name.toLowerCase())) { alert('A muscle group with this name already exists.'); return; }
             if (!emoji) emoji = defaultEmojis[Math.floor(Math.random() * defaultEmojis.length)];
             state.muscleGroups.push({ name, icon: emoji });
+            localStorage.setItem('muscleGroups', JSON.stringify(state.muscleGroups));
             renderMuscleGrid();
             addGroupModal.classList.add('hidden');
         });
