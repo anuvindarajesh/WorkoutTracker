@@ -21,9 +21,13 @@ A simple, responsive Android workout tracking app built using WebView and HTML/C
 
 ## 📸 Screenshots
 
-![WhatsApp Image 2025-07-02 at 10 06 02 (1)](https://github.com/user-attachments/assets/e8f02c72-168f-43f8-91f9-2c8e8130808b)
-![WhatsApp Image 2025-07-02 at 10 06 02](https://github.com/user-attachments/assets/8162bdf0-8182-4b35-832b-969b8b382422)
-![WhatsApp Image 2025-07-02 at 10 06 01](https://github.com/user-attachments/assets/d59fdb8a-e041-46d5-98fd-f62bd7a5f389)
+![WhatsApp Image 2025-07-02 at 13 11 46 (1)](https://github.com/user-attachments/assets/b568e6ac-67a0-4208-aaa4-3bd624e2bb51)
+![WhatsApp Image 2025-07-02 at 13 11 46](https://github.com/user-attachments/assets/2707fb45-a6a6-4b9a-b6f2-1abbd4ff885d)
+![WhatsApp Image 2025-07-02 at 13 11 47](https://github.com/user-attachments/assets/bd922950-ba14-4c7b-b846-c5ff7ced8e05)
+![WhatsApp Image 2025-07-02 at 13 11 47 (1)](https://github.com/user-attachments/assets/5eb01c65-b347-449d-8560-c703b2246e16)
+![WhatsApp Image 2025-07-02 at 13 11 47 (2)](https://github.com/user-attachments/assets/722582b4-6a10-4e92-ad44-243023ef7c46)
+![WhatsApp Image 2025-07-02 at 13 11 47 (3)](https://github.com/user-attachments/assets/19a3dbef-3c86-47a2-8b71-ce73fad092a7)
+
 
 ---
 
