@@ -83,7 +83,7 @@
 
         <div class="space-y-4">
             <input id="exercise-name-input" type="text" placeholder="Exercise Name (e.g., Bench Press)" class="w-full bg-[#2c2c2e] border border-[#3a3a3c] rounded-xl p-4 text-white placeholder-gray-500 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <input id="weight-input" type="text" placeholder="Weight (e.g., 80kg or 175lbs)" class="w-full bg-[#2c2c2e] border border-[#3a3a3c] rounded-xl p-4 text-white placeholder-gray-500 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <input id="weight-input" type="number" inputmode="numeric" placeholder="Weight (e.g., 80)" class="w-full bg-[#2c2c2e] border border-[#3a3a3c] rounded-xl p-4 text-white placeholder-gray-500 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             <input id="date-input" type="date" class="w-full bg-[#2c2c2e] border border-[#3a3a3c] rounded-xl p-4 text-white placeholder-gray-500 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
         <button id="save-workout-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-full text-lg mt-8 shadow-lg">
@@ -243,22 +243,25 @@
                 return;
             }
 
-            document.getElementById('date-workouts-title').textContent = `Workouts for ${new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US')}`;
+            const dateObj = new Date(dateStr + 'T00:00:00');
+            const formattedDate = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
+            document.getElementById('date-workouts-title').textContent = `Workouts for ${formattedDate}`;
 
+            // Show each workout on a new line with a delete button
             workouts.forEach(workout => {
                 const item = document.createElement('div');
-                item.className = 'bg-[#3a3a3c] p-3 rounded-lg flex justify-between items-center';
+                item.className = 'text-white text-lg flex justify-between items-center';
 
                 const text = document.createElement('span');
                 text.textContent = `${workout.exercise} - ${workout.weight}`;
-                item.appendChild(text);
 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'text-red-500 hover:text-red-400 text-xl font-bold px-2';
                 deleteBtn.textContent = '🗑️';
                 deleteBtn.onclick = () => deleteWorkout(workout.id, dateStr);
-                item.appendChild(deleteBtn);
 
+                item.appendChild(text);
+                item.appendChild(deleteBtn);
                 contentEl.appendChild(item);
             });
 
@@ -286,10 +289,14 @@
         // Save workout
         document.getElementById('save-workout-button').addEventListener('click', () => {
             const exerciseName = document.getElementById('exercise-name-input').value.trim();
-            const weight = document.getElementById('weight-input').value.trim();
+            let weight = document.getElementById('weight-input').value.trim();
             const date = document.getElementById('date-input').value;
-
-            if (!exerciseName || !weight || !date) {
+            if (!weight) {
+                weight = "0kg";
+            } else {
+                weight = `${weight}kg`;
+            }
+            if (!exerciseName || !date) {
                 alert('Please fill in all fields, including the date.');
                 return;
             }
@@ -324,6 +331,73 @@
 
         // --- INITIAL RENDER ---
         render();
+
+        // --- SWIPE GESTURE FOR CALENDAR MODAL ---
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        calendarModal.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+        }, false);
+
+        calendarModal.addEventListener('touchend', function(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipeGesture();
+        }, false);
+
+        function handleSwipeGesture() {
+            const swipeDistance = touchEndX - touchStartX;
+            if (Math.abs(swipeDistance) > 50) {
+                if (swipeDistance > 0) {
+                    // Swipe Right: Previous Month
+                    state.calendarDate.setMonth(state.calendarDate.getMonth() - 1);
+                } else {
+                    // Swipe Left: Next Month
+                    state.calendarDate.setMonth(state.calendarDate.getMonth() + 1);
+                }
+                renderCalendar();
+            }
+        }
+
+        // Handle Android back button to navigate between screens
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Backspace' || event.key === 'Escape') {
+                if (state.currentScreen === 'workout') {
+                    state.currentScreen = 'home';
+                    render();
+                    event.preventDefault(); // prevent default back behavior
+                } else if (!calendarModal.classList.contains('hidden')) {
+                    calendarModal.classList.add('hidden');
+                    event.preventDefault();
+                } else if (!dateWorkoutsModal.classList.contains('hidden')) {
+                    dateWorkoutsModal.classList.add('hidden');
+                    calendarModal.classList.remove('hidden');
+                    event.preventDefault();
+                }
+            }
+        });
+
+        // Android sends a 'CustomEvent' named 'androidBackButton'
+        window.addEventListener('androidBackButton', () => {
+            if (!dateWorkoutsModal.classList.contains('hidden')) {
+                dateWorkoutsModal.classList.add('hidden');
+                calendarModal.classList.remove('hidden');
+                return;
+            }
+            if (!calendarModal.classList.contains('hidden')) {
+                calendarModal.classList.add('hidden');
+                return;
+            }
+            if (state.currentScreen === 'workout') {
+                state.currentScreen = 'home';
+                render();
+            } else {
+                // Optional: Ask Android to close the app
+                if (window.AndroidApp) {
+                    window.AndroidApp.closeApp();
+                }
+            }
+        });
     });
 </script>
 </body>
