@@ -1,4 +1,4 @@
-#🏋️‍♀️ Workout Tracker - Android App
+🏋️‍♀️ Workout Tracker - Android App
 
 A simple, responsive Android workout tracking app built using WebView and HTML/CSS/JavaScript. This app lets you log and view workouts based on muscle groups, track workout history using an interactive calendar, and manage your routine — all from your phone.
 
